@@ -1,6 +1,9 @@
 # Application Configuration Variables
 import config
 
+# Json Data Read/Write (custom library)
+import json_files
+
 # Import Challonge! API Data
 import json
 
@@ -14,111 +17,112 @@ import os
 # import request from urllib
 from urllib import request
 
-class Tournament:
+def get_tournament(tourInfo):
 
-  def __init__(self, id, name, date, game, url, type, rounds):
+  # Dereference the tournament data
+  tourInfo = data['tournament']
 
-    # Id of the tournament
-    # i.e. 4217482
-    self.id = id
+  # Tournament Id 
+  id = tourInfo['id']
 
-    # Name of the tournament
-    # i.e. "Nino's Magical Pokemon Showdown"
-    self.name = name
+  # Tournament name
+  name = tourInfo['name']
 
-    # Tournament Start Date
-    # i.e. "2018-01-30T12:18:43.667+10:00"
-    self.date = date
+  # Tournament start date & time
+  date = tourInfo['started_at']
 
-    # Game of the tournament
-    # i.e. "Pokemon Showdown!"
-    self.game = game
+  # Tournament game name
+  game = tourInfo['game_name']
 
-    # Url of tournament
-    # i.e. "yj78qn73"
-    self.url = url
+  # Tournament url key
+  url = tourInfo['url']
 
-    # Type of tournament
-    # i.e. "Single Elim"
-    self.type = type
+  # Tournament type / structure
+  type = tourInfo['tournament_type']
 
-    # Rounds of the tournament
-    # i.e. 3
-    self.rounds = rounds
+  # Number of match rounds
+  rounds = tourInfo['swiss_rounds']
 
-  def __dict__(self):
+  return {
+    'id': id,
+    'name': name,
+    'date': date,
+    'game': game,
+    'url': url,
+    'type': type,
+    'rounds': rounds
+  }
 
-    return {
-      "id": self.id,
-      "name": self.name, 
-      "date": self.date, 
-      "game": self.game, 
-      "url": self.url, 
-      "type": self.type,
-      "rounds": self.rounds
-    }
+def get_player(playerInfo):
 
-class Player:
+  # Dereference the participant object
+  player = playerInfo['participant']
 
-  def __init__(self, id, tid, name):
-    
-    # Player ID (Tournament specific)
-    self.id = id
-    
-    # Tournament ID (Not sure if I need this)
-    self.tid = tid
-    
-    # Player Name (Tournament Specific)
-    # Priority List:
-    # 'name' > 'username' > 'display_name' > 'challonge_username'
-    self.name = name
+  # Player Id Object 
+  id = player['id']
 
-  def __dict__(self):
+  # Player Tournament Id 
+  tid = player['tournament_id']
 
-    return {
-      "id": self.id,
-      "tid": self.tid,
-      "name": self.name
-    }
+  # Placeholder name variable
+  name = ""
 
-class Match:
+  # Dereference the player's name, some fields may be blank
+  # so keep moving down the line where previous is unavailable
 
-  def __init__(self, id, tid, wid, lid, round, score):
+  # 'name' > 'username' > 'display_name' > 'challonge_username'
 
-    # Match Id 
-    # i.e. 110242465
-    self.id = id
+  if 'name' in player and player['name'] != "":
+    name = player["name"]
 
-    # Tournament Id 
-    # i.e. 4217482
-    self.tid = tid
+  elif 'username' in player and player['username'] != "": 
+    name = player["username"]
 
-    # Winning player Id
-    # i.e. 68069631
-    self.wid = wid
+  elif 'display_name' in player and player['display_name'] != "":
+    name = player["display_name"]
 
-    # Losing Player Id
-    # i.e. 68063427
-    self.lid = lid
+  elif 'challonge_username' in player and player['challonge_username'] != "":
+    name = player["challonge_username"]
 
-    # Match Round 
-    # i.e. 1
-    self.round = round
+  # Add a new player to the players list
+  return {
+    'id': id,
+    'tid': tid,
+    'name': name
+  }
 
-    # Match Score
-    # i.e. 1-0
-    self.score = score
+def get_match(matchInfo):
 
-  def __dict__(self):
+  # Dereference the match object
+  match = matchInfo['match']
 
-    return {
-      "id": self.id,
-      "tid": self.tid,
-      "wid": self.wid,
-      "lid": self.lid,
-      "round": self.round,
-      "score": self.score
-    }
+  # Match Id
+  id = match['id']
+
+  # Tournament Id       
+  tid = match['tournament_id']
+
+  # Winner Id
+  wid = match['winner_id']
+
+  # Loser Id 
+  lid = match['loser_id']
+
+  # Round (For ordering)
+  round = match['round']
+
+  # Score
+  score = match['scores_csv']
+
+  # Add the new round to the list
+  return {
+    'id': id,
+    'tid': tid,
+    'wid': wid,
+    'lid': lid,
+    'round': round,
+    'score': score
+  }
 
 # Runs if this script is executed
 if __name__ == '__main__':
@@ -143,174 +147,43 @@ if __name__ == '__main__':
     # Retrieve the json data from the request
     data = json.load(content)
 
-    # Lookup table based on id
-    # Id is used so players with the 
-    # same name are identified 
+    # Lookup table based on id 
+    # so players with the same 
+    # name are identified 
     players = {}
 
-    # Lookup table based on id
-    # Contains that player's elo ranking
-    ratings = {}
-
-    # List, able to be sorted by round
-    # to ensure that matches are ordered
-    # properly
-    matches = []
+    # Lookup table based on id to 
+    # ensure that matches are 
+    # ordered properly
+    matches = {}
 
     # Dereference the tournament data
-    tourinfo = data['tournament']
+    tourInfo = data['tournament']
 
-    # Tournament Id 
-    id = tourinfo['id']
-
-    # Tournament name
-    name = tourinfo['name']
-
-    # Tournament start date & time
-    date = tourinfo['started_at']
-
-    # Tournament game name
-    game = tourinfo['game_name']
-
-    # Tournament url key
-    url = tourinfo['url']
-
-    # Tournament type / structure
-    type = tourinfo['tournament_type']
-
-    # Number of match rounds
-    rounds = tourinfo['swiss_rounds']
-
-    tournament = Tournament(id, name, date, game, url, type, rounds)
+    # Create a tournament object with the properties of the tournament
+    tournament = get_tournament(tourInfo)
+    
+    # Create a hashtable containing only the tournament, to be
+    # merged with the existing tournament json file
+    tournaments = {tournament['id']: tournament}
 
     # Iterate over the players in the participants list
-    for playerinfo in tourinfo['participants']:
+    for playerInfo in tourInfo['participants']:
 
-      # Dereference the participant object
-      player = playerinfo['participant']
+      # Create a player object using the player info
+      player = get_player(playerInfo)
 
-      # Player Id Object 
-      id = player['id']
-
-      # Player Tournament Id 
-      tid = player['tournament_id']
-
-      # Placeholder name variable
-      name = ""
-
-      # Dereference the player's name, some fields may be blank
-      # so keep moving down the line where previous is unavailable
-
-      # 'name' > 'username' > 'display_name' > 'challonge_username'
-
-      if 'name' in player and player['name'] != "":
-        name = player["name"]
-
-      elif 'username' in player and player['username'] != "": 
-        name = player["username"]
-
-      elif 'display_name' in player and player['display_name'] != "":
-        name = player["display_name"]
-
-      elif 'challonge_username' in player and player['challonge_username'] != "":
-        name = player["challonge_username"]
-
-      # Add a new player to the players list
-      players[id] = Player(id, tid, name)
+      # Add the player to the players table
+      players[player['id']] = player
 
     # Iterate over all of the matches in the matches list
-    for matchinfo in tourinfo['matches']:
+    for matchInfo in tourInfo['matches']:
+      
+      # Create a match object using the match info
+      match = get_match(matchInfo)
 
-      # Dereference the match object
-      match = matchinfo['match']
-
-      # Match Id
-      id = match['id']
-
-      # Tournament Id       
-      tid = match['tournament_id']
-
-      # Winner Id
-      wid = match['winner_id']
-
-      # Loser Id 
-      lid = match['loser_id']
-
-      # Round (For ordering)
-      round = match['round']
-
-      # Score
-      score = match['scores_csv']
-
-      # Add the new round to the list
-      matches.append(Match(id, tid, wid, lid, round, score))
-
-    # Get the path of the running script
-    dir = os.path.dirname(__file__)
-
-    # Get the path of the data directory
-    data_dir = os.path.join(dir, 'data')
-
-    # If the data folder does not exist yet
-    if not os.path.exists(data_dir):
-
-      # Create the data folder
-      os.mkdir(data_dir)
-
-    # File containing tournament data
-    tour_file = os.path.join(data_dir, "tours.json")
-
-    # File containing match data
-    match_file = os.path.join(data_dir, "matches.json")
-    
-    # File containing player data
-    player_file = os.path.join(data_dir, "players.csv")
-
-    # Open with all privileges, even if file doesn't exist
-    with open(tour_file, "w+") as tour_json:
-
-      # Get the text from the file
-      content_json = tour_json.read()
-
-      # If the content is not empty
-      if content_json:
-
-        # Get the json data from the file
-        content_json = json.loads(content_json)
-
-      else: # No content available
-
-        # Create empty list
-        content_json = [json.dumps(tournament.toObject())]
-
-      print(content_json)
-
-    # Open with all privileges, even if file doesn't exist
-    with open(match_file, "w+") as match_json:
-
-      # Get the text from the file
-      content_json = match_json.read()
-
-      # If the content is not empty
-      if content_json:
-
-        # Get the json data from the file
-        content_json = json.loads(content_json)
-
-      else: # No content available
-
-        # Create empty list
-        # content_json = [json.dumps(tournament.toObject())]
-        
-
-      print(content_json)
-
-    # Open with all privileges, even if file doesn't exist
-    with open(player_file, "w+") as player_json:
-
-      # Get the json data from the file
-      # player_data = json.loads(player_json.read())
-      pass
+      # Add the match to the matches table
+      matches[match['id']] = match
 
   except Exception as e:
 
