@@ -185,6 +185,30 @@ if __name__ == '__main__':
       # Add the match to the matches table
       matches[match['id']] = match
 
+    # Folder path of the current file
+    scriptPath = os.path.dirname(__file__)
+
+    # Data directory
+    dataPath = os.path.join(scriptPath,"data")
+
+    # Tournament json file
+    toursPath = os.path.join(dataPath, "tournaments.json")
+
+    # Merge the tournament json file with the new metadata
+    handle_json.merge_json(tournaments, toursPath)
+
+    # Matches json file
+    matchesPath = os.path.join(dataPath, "matches.json")
+
+    # Merge the matches json file with the new metadata
+    handle_json.merge_json(matches, matchesPath)
+
+    # Players json file
+    playersPath = os.path.join(dataPath, "players.json")
+
+    # Merge the players json file with the new metadata
+    handle_json.merge_json(players, playersPath)
+
   except Exception as e:
 
     print("Error: ",e)
